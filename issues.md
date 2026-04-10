@@ -1,0 +1,17 @@
+wallpaper rotator bugs, issues, errors, etc. An overview of the project can be found in @overview.md and the project's full goals can be found in @wallpaper_rotator_mvp.md 
+
+1. The first time the app ran, I had to manually click “Rotate Now” to get the wallpaper to change. That’s okay. 
+2. Even with “Rotate on screen unlock” enabled, unlocking the device does not rotate the wallpaper.
+3. The second time I wanted to change the wallpaper by clicking “Rotate Now”, I got an error at the bottom of the screen saying “Error: cannot use a recycled source in createBitmap”
+4. After restarting the device (to change the wallpaper), the ability to press “Rotate Now” returns. However, after I rotate it twice, it goes back to giving me “Error: cannot use a recycled source in createBitmap”
+5. I restarted the device again after that, and it did not rotate the wallpaper. 
+6. Crops frequently extend past the image itself. This is confirmed by tapping on an image in the gallery once uploaded and seeing that its white cropping box extends far, far beyond the image itself. The image will appear in the center of the screen with a black section at the top and bottom of the screen, and the white crop box extends into that area. 
+7. As a result of the crops extending past the image itself, some of the images that appear on the wallpaper end up stretched vertically.
+8. Some images that were added with manual crop and some that were added with autocrop end up being added to the gallery with no crop at all! Their white crop box appears when I tap on the image, but they are at the original image aspect ratio. Since corner-drag-to-resize hasn’t been implemented, I can’t resize them to a normal aspect ratio, or at all.  I haven’t been able to test what happens when those photos end up on the home screen, because the “Rotate Now” button is broken, as I mentioned. 
+9. The image aspect ratio shown in settings is somewhat wrong. It shows 84:187 for my IRL test device, which is a Pixel 8 Pro with an “official” 20:9 aspect ratio. It shows resolution 1008x2244 which is correct, and matches 84:187. Is this a problem? I don’t know. 
+10. In the crop view, the dragging box is really poorly implemented. It’s very un-smooth, and yet it also takes many, many, many, many drags just to barely move it across the screen. 
+11. neither pinch-to-zoom nor corner-drag resize is currently supported by the crop view. 
+12. When I am in the gallery view, the thumbnail does not match the cropped white box when I open the crop view
+13. When I am in gallery view and I select an image and do the button in the header to make it not part of the rotation (the eye with a cross through it), the eye-with-cross logo appears in the thumbnail in gallery view for that image. That’s good. But, if I select the image again, the header still shows the button to make it not part of the rotation (the eye with a cross through it). If I press that button, the gallery view still shows that image with the eye-with-cross logo in the thumbnail in gallery view. So, I don’t know if it is enabled or disabled, and there’s no clear way to enable it (like a normal eye logo in the header when I select the image). 
+14. When you open the crop view, the white box is not where the wallpaper is actually currently cropped it, the white box always appears just on the far right side of the image. Also, it doesn’t match the thumbnail. This has been confirmed on images that say any of the three types: “FULL BODY” or “FACE” or “LANDSCAPE”.
+
