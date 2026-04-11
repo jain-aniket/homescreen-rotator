@@ -48,36 +48,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import coil.transform.Transformation
 import com.wallpaper.rotator.data.db.PhotoMetadata
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import coil.size.Size as CoilSize
 import androidx.compose.ui.platform.LocalContext
-import java.io.File
-
-private class CropTransformation(
-    private val photo: PhotoMetadata
-) : Transformation {
-    override val cacheKey: String = "${photo.cropX}_${photo.cropY}_${photo.cropWidth}_${photo.cropHeight}"
-
-    override suspend fun transform(input: Bitmap, size: CoilSize): Bitmap {
-        // Crop rect is in raw file pixel space (same as CropEditorViewModel / WallpaperRotationWorker).
-        // Coil's `input` may have EXIF orientation applied, so width/height can disagree — crop from a fresh decode.
-        val original = BitmapFactory.decodeFile(photo.filePath) ?: return input
-        val x = photo.cropX.toInt().coerceIn(0, original.width - 1)
-        val y = photo.cropY.toInt().coerceIn(0, original.height - 1)
-        val w = photo.cropWidth.toInt().coerceAtMost(original.width - x)
-        val h = photo.cropHeight.toInt().coerceAtMost(original.height - y)
-        if (w <= 0 || h <= 0) {
-            original.recycle()
-            return input
-        }
-        val cropped = Bitmap.createBitmap(original, x, y, w, h)
-        if (cropped !== original) original.recycle()
-        return cropped
-    }
-}
+import com.wallpaper.rotator.util.ThumbnailGenerator
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -106,7 +79,7 @@ fun LibraryScreen(
 
                         IconButton(onClick = { viewModel.toggleSelectionEnabled() }) {
                             Icon(
-                                if (allEnabled) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                if (allEnabled) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = if (allEnabled) "Disable from rotation" else "Enable in rotation"
                             )
                         }
@@ -198,9 +171,7 @@ private fun PhotoGridItem(
             val context = LocalContext.current
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(File(photo.filePath))
-                    .transformations(listOf(CropTransformation(photo)))
-                    .memoryCacheKey("${photo.filePath}_${photo.cropX}_${photo.cropY}_${photo.cropWidth}_${photo.cropHeight}")
+                    .data(ThumbnailGenerator.thumbnailFile(context, photo.photoId))
                     .build(),
                 contentDescription = "Photo",
                 modifier = Modifier.fillMaxSize(),

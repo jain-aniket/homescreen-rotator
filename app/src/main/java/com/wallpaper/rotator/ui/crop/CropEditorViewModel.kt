@@ -81,6 +81,7 @@ class CropEditorViewModel(application: Application) : AndroidViewModel(applicati
                 cropHeight = state.cropRect.height()
             )
             repository.updatePhoto(updated)
+            repository.regenerateThumbnail(updated)
             _uiState.update { it.copy(isSaved = true) }
         }
     }

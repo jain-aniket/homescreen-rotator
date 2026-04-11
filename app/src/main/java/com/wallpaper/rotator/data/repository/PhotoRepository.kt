@@ -7,6 +7,7 @@ import com.wallpaper.rotator.data.db.CropMethod
 import com.wallpaper.rotator.data.db.PhotoMetadata
 import com.wallpaper.rotator.data.db.PhotoMetadataDao
 import com.wallpaper.rotator.data.db.SubjectType
+import com.wallpaper.rotator.util.ThumbnailGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -50,16 +51,23 @@ class PhotoRepository(
             detectedSubjectType = subjectType,
             cropMethod = cropMethod
         )
-        dao.insert(metadata)
+        val id = dao.insert(metadata)
+        ThumbnailGenerator.writeThumbnail(context, metadata.copy(photoId = id))
+        id
     }
 
     suspend fun updatePhoto(photo: PhotoMetadata) = dao.update(photo)
+
+    suspend fun regenerateThumbnail(photo: PhotoMetadata) = withContext(Dispatchers.IO) {
+        ThumbnailGenerator.writeThumbnail(context, photo)
+    }
 
     suspend fun deletePhotos(ids: List<Long>) = withContext(Dispatchers.IO) {
         ids.forEach { id ->
             dao.getById(id)?.let { photo ->
                 File(photo.filePath).delete()
             }
+            ThumbnailGenerator.thumbnailFile(context, id).delete()
         }
         dao.deleteByIds(ids)
     }
