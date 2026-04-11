@@ -87,4 +87,11 @@ class PhotoRepository(
     }
 
     suspend fun getEnabledCount(): Int = dao.getEnabledCount()
+
+    /** Index in [PhotoMetadataDao.getEnabledPhotosList] order, or null if not enabled. */
+    suspend fun indexInEnabledQueue(photoId: Long): Int? {
+        val list = dao.getEnabledPhotosList()
+        val idx = list.indexOfFirst { it.photoId == photoId }
+        return if (idx >= 0) idx else null
+    }
 }

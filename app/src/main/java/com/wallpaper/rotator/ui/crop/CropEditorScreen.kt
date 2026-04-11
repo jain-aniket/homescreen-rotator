@@ -3,18 +3,25 @@ package com.wallpaper.rotator.ui.crop
 import android.graphics.RectF
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -26,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import java.io.File
@@ -54,6 +63,9 @@ fun CropEditorScreen(
     LaunchedEffect(photoId) { viewModel.loadPhoto(photoId) }
     LaunchedEffect(state.isSaved) { if (state.isSaved) onNavigateBack() }
 
+    val barScrim = Color.Black.copy(alpha = 0.85f)
+    val onBar = Color.White
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -63,18 +75,46 @@ fun CropEditorScreen(
                         Icon(Icons.Default.Close, contentDescription = "Cancel")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { viewModel.saveCrop() }) {
-                        Icon(Icons.Default.Check, contentDescription = "Save")
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.7f),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = barScrim,
+                    titleContentColor = onBar,
+                    navigationIconContentColor = onBar
                 )
             )
+        },
+        bottomBar = {
+            BottomAppBar(
+                containerColor = barScrim,
+                contentColor = onBar
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { viewModel.saveCrop() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = onBar)
+                    ) {
+                        Text("Save")
+                    }
+                    Button(
+                        onClick = { viewModel.saveCropAndApply() },
+                        enabled = state.photo?.isEnabled == true,
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        )
+                    ) {
+                        Text("Save & apply")
+                    }
+                }
+            }
         },
         containerColor = Color.Black
     ) { padding ->

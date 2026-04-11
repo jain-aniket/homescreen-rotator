@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.wallpaper.rotator.WallpaperRotatorApp
 import com.wallpaper.rotator.data.db.PhotoMetadata
+import com.wallpaper.rotator.util.WallpaperApply
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,12 +16,14 @@ data class LibraryUiState(
     val photos: List<PhotoMetadata> = emptyList(),
     val selectedIds: Set<Long> = emptySet(),
     val isSelectMode: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val applyError: String? = null
 )
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = (application as WallpaperRotatorApp).photoRepository
+    private val app = application as WallpaperRotatorApp
+    private val repository = app.photoRepository
 
     private val _uiState = MutableStateFlow(LibraryUiState())
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
@@ -98,5 +101,23 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val allEnabled = selectedPhotos.all { it.isEnabled }
         val anyEnabled = selectedPhotos.any { it.isEnabled }
         return Pair(allEnabled, anyEnabled)
+    }
+
+    fun applySelectedWallpaper() {
+        val ids = _uiState.value.selectedIds
+        if (ids.size != 1) return
+        val id = ids.first()
+        val photo = _uiState.value.photos.find { it.photoId == id } ?: return
+        if (!photo.isEnabled) return
+        viewModelScope.launch {
+            val ok = WallpaperApply.applyPhotoAsWallpaper(app, photo, repository, app.preferencesManager)
+            if (!ok) {
+                _uiState.update { it.copy(applyError = "Could not apply wallpaper") }
+            }
+        }
+    }
+
+    fun clearApplyError() {
+        _uiState.update { it.copy(applyError = null) }
     }
 }

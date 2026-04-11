@@ -9,6 +9,7 @@ import com.wallpaper.rotator.WallpaperRotatorApp
 import com.wallpaper.rotator.data.db.PhotoMetadata
 import com.wallpaper.rotator.data.db.SubjectType
 import com.wallpaper.rotator.util.DisplayUtils
+import com.wallpaper.rotator.util.WallpaperApply
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,6 +84,27 @@ class CropEditorViewModel(application: Application) : AndroidViewModel(applicati
             repository.updatePhoto(updated)
             repository.regenerateThumbnail(updated)
             _uiState.update { it.copy(isSaved = true) }
+        }
+    }
+
+    fun saveCropAndApply() {
+        val state = _uiState.value
+        val photo = state.photo ?: return
+        if (!photo.isEnabled) return
+        viewModelScope.launch {
+            val updated = photo.copy(
+                cropX = state.cropRect.left,
+                cropY = state.cropRect.top,
+                cropWidth = state.cropRect.width(),
+                cropHeight = state.cropRect.height()
+            )
+            repository.updatePhoto(updated)
+            repository.regenerateThumbnail(updated)
+            _uiState.update { it.copy(photo = updated) }
+            val ok = WallpaperApply.applyPhotoAsWallpaper(app, updated, repository, app.preferencesManager)
+            if (ok) {
+                _uiState.update { it.copy(isSaved = true) }
+            }
         }
     }
 }

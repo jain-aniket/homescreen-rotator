@@ -78,13 +78,13 @@ fun ImportScreen(
                     Text("OK")
                 }
             },
-            title = { Text("Import notice") },
+            title = { Text("Oops, just so you know...") },
             text = {
                 Text(
                     if (skipped == 1) {
-                        "1 photo has not been imported due to it being an alternate."
+                        "1 photo has not been imported due to it being a duplicate. You can allow duplicates by disabling the 'Remove duplicates during import' setting in the settings."
                     } else {
-                        "$skipped photos have not been imported due to them being alternates."
+                        "$skipped photos have not been imported due to them being duplicates. You can allow duplicates by disabling the 'Remove duplicates during import' setting in the settings."
                     }
                 )
             }

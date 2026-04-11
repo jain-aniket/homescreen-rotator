@@ -1,6 +1,7 @@
 package com.wallpaper.rotator.ui.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,12 +36,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,6 +74,14 @@ fun LibraryScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.applyError) {
+        state.applyError?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearApplyError()
+        }
+    }
 
     if (showDeleteConfirm) {
         val count = state.selectedIds.size
@@ -106,6 +119,7 @@ fun LibraryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -116,6 +130,15 @@ fun LibraryScreen(
                 },
                 actions = {
                     if (state.isSelectMode) {
+                        val canApplySingle = state.selectedIds.size == 1 &&
+                            state.photos.find { it.photoId == state.selectedIds.first() }?.isEnabled == true
+
+                        TextButton(
+                            onClick = { viewModel.applySelectedWallpaper() },
+                            enabled = canApplySingle
+                        ) {
+                            Text("Apply")
+                        }
                         // Show toggle button based on selected photos' enable/disable state
                         val selectedState = viewModel.getSelectedPhotosState()
                         val allEnabled = selectedState?.first ?: false
@@ -226,15 +249,21 @@ private fun PhotoGridItem(
             )
 
             if (!photo.isEnabled) {
+                val scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.28f)
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    val iconSize = (maxWidth / 2).coerceAtLeast(24.dp)
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(scrimColor)
+                    )
+                    val iconSize = (maxWidth / 3).coerceAtLeast(24.dp)
                     Icon(
                         Icons.Default.VisibilityOff,
                         contentDescription = "Not in rotation",
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = Color.White.copy(alpha = 0.78f),
                         modifier = Modifier.size(iconSize)
                     )
                 }
