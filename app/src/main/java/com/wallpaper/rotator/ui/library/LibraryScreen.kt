@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
@@ -25,6 +26,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +35,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -39,6 +43,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +68,42 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        val count = state.selectedIds.size
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete photos?") },
+            text = {
+                Text(
+                    if (count == 1) {
+                        "This photo will be removed from your library. This cannot be undone."
+                    } else {
+                        "$count photos will be removed from your library. This cannot be undone."
+                    }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteSelected()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -83,7 +126,11 @@ fun LibraryScreen(
                                 contentDescription = if (allEnabled) "Disable from rotation" else "Enable in rotation"
                             )
                         }
-                        IconButton(onClick = { viewModel.deleteSelected() }) {
+                        IconButton(
+                            onClick = {
+                                if (state.selectedIds.isNotEmpty()) showDeleteConfirm = true
+                            }
+                        ) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                         IconButton(onClick = { viewModel.exitSelectMode() }) {
@@ -179,17 +226,16 @@ private fun PhotoGridItem(
             )
 
             if (!photo.isEnabled) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp),
-                    contentAlignment = Alignment.BottomStart
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
+                    val iconSize = (maxWidth / 2).coerceAtLeast(24.dp)
                     Icon(
                         Icons.Default.VisibilityOff,
-                        contentDescription = "Disabled",
+                        contentDescription = "Not in rotation",
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(iconSize)
                     )
                 }
             }
