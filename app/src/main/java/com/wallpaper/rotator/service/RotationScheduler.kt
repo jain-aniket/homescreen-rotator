@@ -33,6 +33,14 @@ object RotationScheduler {
         )
     }
 
+    fun syncPeriodicRotation(context: Context, enabled: Boolean, intervalHours: Float) {
+        if (enabled) {
+            scheduleRotation(context, intervalHours)
+        } else {
+            cancelRotation(context)
+        }
+    }
+
     fun cancelRotation(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(PERIODIC_WORK_NAME)
     }

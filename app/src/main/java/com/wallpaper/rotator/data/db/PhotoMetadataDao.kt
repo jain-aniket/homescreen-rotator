@@ -29,6 +29,9 @@ interface PhotoMetadataDao {
     @Query("SELECT COUNT(*) FROM photo_metadata WHERE isEnabled = 1")
     suspend fun getEnabledCount(): Int
 
+    @Query("SELECT EXISTS(SELECT 1 FROM photo_metadata WHERE sourceUri = :uri LIMIT 1)")
+    suspend fun existsBySourceUri(uri: String): Boolean
+
     @Query("DELETE FROM photo_metadata WHERE photoId IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 

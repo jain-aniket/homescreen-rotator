@@ -27,6 +27,8 @@ class PhotoRepository(
 
     suspend fun getPhotoById(id: Long): PhotoMetadata? = dao.getById(id)
 
+    suspend fun existsImportedSourceUri(uriKey: String): Boolean = dao.existsBySourceUri(uriKey)
+
     suspend fun importPhoto(
         sourceUri: Uri,
         cropBox: RectF,
@@ -43,6 +45,7 @@ class PhotoRepository(
         } ?: throw IllegalStateException("Cannot open URI: $sourceUri")
 
         val metadata = PhotoMetadata(
+            sourceUri = sourceUri.toString(),
             filePath = destFile.absolutePath,
             cropX = cropBox.left,
             cropY = cropBox.top,

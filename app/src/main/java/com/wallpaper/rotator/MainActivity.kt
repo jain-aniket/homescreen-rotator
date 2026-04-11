@@ -24,8 +24,9 @@ class MainActivity : ComponentActivity() {
             try {
                 val app = application as WallpaperRotatorApp
                 val prefs = app.preferencesManager
+                val onSchedule = prefs.rotateOnSchedule.first()
                 val interval = prefs.rotationIntervalHours.first()
-                RotationScheduler.scheduleRotation(this@MainActivity, interval)
+                RotationScheduler.syncPeriodicRotation(this@MainActivity, onSchedule, interval)
             } catch (e: Exception) {
                 // Silently fail if preferences cannot be read
             }

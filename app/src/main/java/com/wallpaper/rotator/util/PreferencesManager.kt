@@ -17,13 +17,19 @@ class PreferencesManager(private val context: Context) {
 
     private companion object {
         val ROTATION_INTERVAL = floatPreferencesKey("rotation_interval_hours")
+        val ROTATE_ON_SCHEDULE = booleanPreferencesKey("rotate_on_schedule")
         val ROTATE_ON_UNLOCK = booleanPreferencesKey("rotate_on_unlock")
         val ROTATE_ON_BOOT = booleanPreferencesKey("rotate_on_boot")
         val LAST_ROTATED_INDEX = intPreferencesKey("last_rotated_index")
+        val REMOVE_DUPLICATES_ON_IMPORT = booleanPreferencesKey("remove_duplicates_on_import")
     }
 
     val rotationIntervalHours: Flow<Float> = context.dataStore.data.map { prefs ->
         prefs[ROTATION_INTERVAL] ?: 6f
+    }
+
+    val rotateOnSchedule: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[ROTATE_ON_SCHEDULE] ?: true
     }
 
     val rotateOnUnlock: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -38,8 +44,16 @@ class PreferencesManager(private val context: Context) {
         prefs[LAST_ROTATED_INDEX] ?: 0
     }
 
+    val removeDuplicatesOnImport: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[REMOVE_DUPLICATES_ON_IMPORT] ?: true
+    }
+
     suspend fun setRotationInterval(hours: Float) {
         context.dataStore.edit { it[ROTATION_INTERVAL] = hours }
+    }
+
+    suspend fun setRotateOnSchedule(enabled: Boolean) {
+        context.dataStore.edit { it[ROTATE_ON_SCHEDULE] = enabled }
     }
 
     suspend fun setRotateOnUnlock(enabled: Boolean) {
@@ -52,5 +66,9 @@ class PreferencesManager(private val context: Context) {
 
     suspend fun setLastRotatedIndex(index: Int) {
         context.dataStore.edit { it[LAST_ROTATED_INDEX] = index }
+    }
+
+    suspend fun setRemoveDuplicatesOnImport(enabled: Boolean) {
+        context.dataStore.edit { it[REMOVE_DUPLICATES_ON_IMPORT] = enabled }
     }
 }

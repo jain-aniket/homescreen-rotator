@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CropFree
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +33,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -66,6 +68,27 @@ fun ImportScreen(
             onImportComplete()
             viewModel.resetState()
         }
+    }
+
+    state.duplicateSkipCount?.let { skipped ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissDuplicateSkipNotice() },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissDuplicateSkipNotice() }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Import notice") },
+            text = {
+                Text(
+                    if (skipped == 1) {
+                        "1 photo has not been imported due to it being an alternate."
+                    } else {
+                        "$skipped photos have not been imported due to them being alternates."
+                    }
+                )
+            }
+        )
     }
 
     Scaffold(

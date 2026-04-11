@@ -1,5 +1,6 @@
 package com.wallpaper.rotator.ui.settings
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,10 +19,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,23 +38,56 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.abs
+import kotlin.math.round
+import kotlinx.coroutines.launch
 
 private data class IntervalOption(val label: String, val hours: Float)
 
-private val intervalOptions = listOf(
-    IntervalOption("30 minutes", 0.5f),
-    IntervalOption("1 hour", 1f),
-    IntervalOption("3 hours", 3f),
-    IntervalOption("6 hours", 6f),
-    IntervalOption("12 hours", 12f),
+private const val INTERVAL_EPS = 1e-3f
+
+private val intervalPresets = listOf(
+    IntervalOption("15 min", 0.25f),
+    IntervalOption("30 min", 0.5f),
+    IntervalOption("1 h", 1f),
+    IntervalOption("3 h", 3f),
+    IntervalOption("6 h", 6f),
+    IntervalOption("12 h", 12f),
     IntervalOption("Daily", 24f),
     IntervalOption("Weekly", 168f)
 )
+
+private fun intervalMatchesPreset(hours: Float, presetHours: Float): Boolean =
+    abs(hours - presetHours) < INTERVAL_EPS
+
+private fun intervalHoursToComponents(hours: Float): Triple<Int, Int, Int> {
+    val totalMinutes = round(hours * 60.0).toInt().coerceAtLeast(15)
+    val days = totalMinutes / (24 * 60)
+    val rem = totalMinutes - days * 24 * 60
+    val h = rem / 60
+    val m = rem % 60
+    return Triple(days, h, m)
+}
+
+private fun formatIntervalHours(hours: Float): String {
+    val totalMinutes = round(hours * 60.0).toInt().coerceAtLeast(15)
+    val days = totalMinutes / (24 * 60)
+    val rem = totalMinutes - days * 24 * 60
+    val h = rem / 60
+    val m = rem % 60
+    val parts = mutableListOf<String>()
+    if (days > 0) parts.add("$days d")
+    if (h > 0) parts.add("$h h")
+    if (m > 0) parts.add("$m min")
+    return if (parts.isNotEmpty()) parts.joinToString(" ") else "15 min"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,9 +138,30 @@ fun SettingsScreen(
             }
 
             SectionCard(title = "Rotation Schedule") {
-                IntervalDropdown(
-                    currentHours = state.intervalHours,
-                    onIntervalSelected = { viewModel.setInterval(it) }
+                ToggleRow(
+                    label = "Rotate on a schedule",
+                    checked = state.rotateOnSchedule,
+                    onCheckedChange = { viewModel.setRotateOnSchedule(it) }
+                )
+                Text(
+                    "Current interval: ${formatIntervalHours(state.intervalHours)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+                Text("Presets", style = MaterialTheme.typography.labelLarge)
+                PresetIntervalRow(
+                    intervalHours = state.intervalHours,
+                    enabled = state.rotateOnSchedule,
+                    onPresetSelected = { viewModel.setInterval(it) }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Custom (days, hours, minutes)", style = MaterialTheme.typography.labelLarge)
+                IntervalCustomFields(
+                    enabled = state.rotateOnSchedule,
+                    intervalHours = state.intervalHours,
+                    snackbarHostState = snackbarHostState,
+                    onApplyHours = { viewModel.setInterval(it) }
                 )
             }
 
@@ -124,6 +178,20 @@ fun SettingsScreen(
                 )
             }
 
+            SectionCard(title = "Import") {
+                ToggleRow(
+                    label = "Remove duplicates during import",
+                    checked = state.removeDuplicatesOnImport,
+                    onCheckedChange = { viewModel.setRemoveDuplicatesOnImport(it) }
+                )
+                Text(
+                    "When on, photos already in your library (same original file) are not imported again.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
             Button(
                 onClick = { viewModel.rotateNow() },
                 modifier = Modifier.fillMaxWidth(),
@@ -135,6 +203,114 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun PresetIntervalRow(
+    intervalHours: Float,
+    enabled: Boolean,
+    onPresetSelected: (Float) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        intervalPresets.forEach { option ->
+            FilterChip(
+                selected = intervalMatchesPreset(intervalHours, option.hours),
+                onClick = { onPresetSelected(option.hours) },
+                label = { Text(option.label) },
+                enabled = enabled
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntervalCustomFields(
+    enabled: Boolean,
+    intervalHours: Float,
+    snackbarHostState: SnackbarHostState,
+    onApplyHours: (Float) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var customDays by remember { mutableStateOf("0") }
+    var customHours by remember { mutableStateOf("0") }
+    var customMinutes by remember { mutableStateOf("30") }
+
+    LaunchedEffect(intervalHours) {
+        val (d, h, m) = intervalHoursToComponents(intervalHours)
+        customDays = d.toString()
+        customHours = h.toString()
+        customMinutes = m.toString()
+    }
+
+    val keyboardDigits = KeyboardOptions(keyboardType = KeyboardType.Number)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = customDays,
+            onValueChange = { customDays = it.filter { ch -> ch.isDigit() } },
+            label = { Text("Days") },
+            singleLine = true,
+            enabled = enabled,
+            keyboardOptions = keyboardDigits,
+            modifier = Modifier.weight(1f)
+        )
+        OutlinedTextField(
+            value = customHours,
+            onValueChange = { customHours = it.filter { ch -> ch.isDigit() } },
+            label = { Text("Hours") },
+            singleLine = true,
+            enabled = enabled,
+            keyboardOptions = keyboardDigits,
+            modifier = Modifier.weight(1f)
+        )
+        OutlinedTextField(
+            value = customMinutes,
+            onValueChange = { customMinutes = it.filter { ch -> ch.isDigit() } },
+            label = { Text("Min") },
+            singleLine = true,
+            enabled = enabled,
+            keyboardOptions = keyboardDigits,
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    Button(
+        onClick = {
+            val d = customDays.toIntOrNull() ?: 0
+            val h = customHours.toIntOrNull() ?: 0
+            val mi = customMinutes.toIntOrNull() ?: 0
+            if (h !in 0..23 || mi !in 0..59 || d < 0) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Use hours 0–23 and minutes 0–59")
+                }
+                return@Button
+            }
+            val totalMinutes = d * 24 * 60 + h * 60 + mi
+            if (totalMinutes < 15) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Minimum interval is 15 minutes (Android limit)")
+                }
+                return@Button
+            }
+            onApplyHours(totalMinutes / 60f)
+        },
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text("Apply custom interval", style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -177,39 +353,5 @@ private fun ToggleRow(label: String, checked: Boolean, onCheckedChange: (Boolean
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun IntervalDropdown(currentHours: Float, onIntervalSelected: (Float) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val currentLabel = intervalOptions.find { it.hours == currentHours }?.label ?: "${currentHours}h"
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        OutlinedTextField(
-            value = currentLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Rotation Interval") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            intervalOptions.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.label) },
-                    onClick = {
-                        onIntervalSelected(option.hours)
-                        expanded = false
-                    }
-                )
-            }
-        }
     }
 }

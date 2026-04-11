@@ -19,8 +19,9 @@ class BootReceiver : BroadcastReceiver() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                val onSchedule = prefs.rotateOnSchedule.first()
                 val interval = prefs.rotationIntervalHours.first()
-                RotationScheduler.scheduleRotation(context, interval)
+                RotationScheduler.syncPeriodicRotation(context, onSchedule, interval)
 
                 val rotateOnBoot = prefs.rotateOnBoot.first()
                 if (rotateOnBoot) {

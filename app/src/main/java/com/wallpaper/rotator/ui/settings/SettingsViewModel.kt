@@ -27,8 +27,10 @@ data class SettingsUiState(
     val screenWidth: Int = 0,
     val screenHeight: Int = 0,
     val intervalHours: Float = 6f,
+    val rotateOnSchedule: Boolean = true,
     val rotateOnUnlock: Boolean = false,
     val rotateOnBoot: Boolean = false,
+    val removeDuplicatesOnImport: Boolean = true,
     val enabledPhotoCount: Int = 0,
     val rotationMessage: String? = null
 )
@@ -53,6 +55,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
         viewModelScope.launch {
+            prefs.rotateOnSchedule.collect { enabled ->
+                _uiState.update { it.copy(rotateOnSchedule = enabled) }
+            }
+        }
+        viewModelScope.launch {
             prefs.rotateOnUnlock.collect { enabled ->
                 _uiState.update { it.copy(rotateOnUnlock = enabled) }
             }
@@ -60,6 +67,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             prefs.rotateOnBoot.collect { enabled ->
                 _uiState.update { it.copy(rotateOnBoot = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            prefs.removeDuplicatesOnImport.collect { enabled ->
+                _uiState.update { it.copy(removeDuplicatesOnImport = enabled) }
             }
         }
         viewModelScope.launch {
@@ -72,7 +84,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setInterval(hours: Float) {
         viewModelScope.launch {
             prefs.setRotationInterval(hours)
-            RotationScheduler.scheduleRotation(app, hours)
+            val onSchedule = prefs.rotateOnSchedule.first()
+            RotationScheduler.syncPeriodicRotation(app, onSchedule, hours)
+        }
+    }
+
+    fun setRotateOnSchedule(enabled: Boolean) {
+        viewModelScope.launch {
+            prefs.setRotateOnSchedule(enabled)
+            val interval = prefs.rotationIntervalHours.first()
+            RotationScheduler.syncPeriodicRotation(app, enabled, interval)
         }
     }
 
@@ -85,6 +106,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setRotateOnBoot(enabled: Boolean) {
         viewModelScope.launch { prefs.setRotateOnBoot(enabled) }
+    }
+
+    fun setRemoveDuplicatesOnImport(enabled: Boolean) {
+        viewModelScope.launch { prefs.setRemoveDuplicatesOnImport(enabled) }
     }
 
     fun rotateNow() {

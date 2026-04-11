@@ -15,6 +15,7 @@ import com.wallpaper.rotator.util.PreferencesManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class WallpaperRotatorApp : Application() {
@@ -30,7 +31,14 @@ class WallpaperRotatorApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        RotationScheduler.scheduleRotation(this, 6f)
+        appScope.launch {
+            try {
+                val onSchedule = preferencesManager.rotateOnSchedule.first()
+                val interval = preferencesManager.rotationIntervalHours.first()
+                RotationScheduler.syncPeriodicRotation(this@WallpaperRotatorApp, onSchedule, interval)
+            } catch (_: Exception) {
+            }
+        }
 
         // Monitor "Rotate on unlock" preference and register/unregister receiver as needed
         appScope.launch {

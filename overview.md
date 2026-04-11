@@ -176,7 +176,7 @@ Aspect ratio is always `height / width` (portrait orientation, e.g., ~2.0 for a 
 
 ## Rotation System
 
-- **RotationScheduler** wraps WorkManager. `scheduleRotation()` creates a `PeriodicWorkRequest` (minimum 15 minutes). `triggerImmediate()` fires a one-shot worker.
+- **RotationScheduler** wraps WorkManager. `scheduleRotation()` creates a `PeriodicWorkRequest` (minimum 15 minutes; this is the platform minimum). `syncPeriodicRotation()` either schedules that work or cancels it when the user turns off scheduled rotation. Settings support presets and a custom interval (days/hours/minutes) down to 15 minutes. `triggerImmediate()` fires a one-shot worker.
 - **WallpaperRotationWorker** is a `CoroutineWorker` that: loads the next enabled photo (circular queue via `lastRotatedIndex`), applies the stored crop, scales preserving aspect ratio (fill + center-crop to exact screen dims), and calls `WallpaperManager.setBitmap()` for both home and lock screen.
 - **BootReceiver** re-schedules rotation on `BOOT_COMPLETED` and optionally triggers immediate rotation.
 - **ScreenUnlockReceiver** fires on `USER_PRESENT` if the unlock toggle is enabled. Dynamically registered/unregistered in `WallpaperRotatorApp` (Application-scoped, so it survives Activity destruction while the device is locked).

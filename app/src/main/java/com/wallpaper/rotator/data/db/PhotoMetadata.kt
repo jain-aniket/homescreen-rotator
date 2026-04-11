@@ -1,6 +1,7 @@
 package com.wallpaper.rotator.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 
@@ -12,10 +13,15 @@ enum class CropMethod {
     AUTO, MANUAL
 }
 
-@Entity(tableName = "photo_metadata")
+@Entity(
+    tableName = "photo_metadata",
+    indices = [Index(value = ["sourceUri"])]
+)
 data class PhotoMetadata(
     @PrimaryKey(autoGenerate = true)
     val photoId: Long = 0,
+    /** Original picker URI string ([Uri.toString]); used to skip re-imports of the same media item. */
+    val sourceUri: String? = null,
     val filePath: String,
     val cropX: Float,
     val cropY: Float,

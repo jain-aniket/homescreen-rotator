@@ -13,6 +13,7 @@ import com.wallpaper.rotator.util.DisplayUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -23,6 +24,8 @@ data class ImportUiState(
     val processedCount: Int = 0,
     val totalCount: Int = 0,
     val importComplete: Boolean = false,
+    /** If non-null, show a dialog; when dismissed, navigation may proceed. */
+    val duplicateSkipCount: Int? = null,
     val errorMessage: String? = null
 )
 
@@ -31,12 +34,15 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
     private val app get() = getApplication<WallpaperRotatorApp>()
     private val repository get() = app.photoRepository
     private val cropEngine get() = app.cropEngine
+    private val preferences get() = app.preferencesManager
 
     private val _uiState = MutableStateFlow(ImportUiState())
     val uiState: StateFlow<ImportUiState> = _uiState.asStateFlow()
 
     fun setSelectedUris(uris: List<Uri>) {
-        _uiState.update { it.copy(selectedUris = uris, importComplete = false, errorMessage = null) }
+        _uiState.update {
+            it.copy(selectedUris = uris, importComplete = false, errorMessage = null, duplicateSkipCount = null)
+        }
     }
 
     fun setCropMode(mode: CropMethod) {
@@ -51,8 +57,20 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
             _uiState.update { it.copy(isProcessing = true, processedCount = 0, totalCount = state.selectedUris.size) }
 
             val wallpaperAR = DisplayUtils.getWallpaperAspectRatio(app)
+            val removeDuplicates = preferences.removeDuplicatesOnImport.first()
+            val seenInBatch = mutableSetOf<String>()
+            var skippedDuplicates = 0
 
             for ((index, uri) in state.selectedUris.withIndex()) {
+                val uriKey = uri.toString()
+                if (removeDuplicates) {
+                    if (seenInBatch.contains(uriKey) || repository.existsImportedSourceUri(uriKey)) {
+                        skippedDuplicates++
+                        _uiState.update { it.copy(processedCount = index + 1) }
+                        continue
+                    }
+                    seenInBatch.add(uriKey)
+                }
                 try {
                     val cropBox: RectF
                     val subjectType: SubjectType
@@ -97,8 +115,22 @@ class ImportViewModel(application: Application) : AndroidViewModel(application) 
                 _uiState.update { it.copy(processedCount = index + 1) }
             }
 
-            _uiState.update { it.copy(isProcessing = false, importComplete = true) }
+            if (skippedDuplicates > 0) {
+                _uiState.update {
+                    it.copy(
+                        isProcessing = false,
+                        duplicateSkipCount = skippedDuplicates,
+                        importComplete = false
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isProcessing = false, importComplete = true) }
+            }
         }
+    }
+
+    fun dismissDuplicateSkipNotice() {
+        _uiState.update { it.copy(duplicateSkipCount = null, importComplete = true) }
     }
 
     fun resetState() {
